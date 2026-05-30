@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grav MUD Alpha — MarkUpDown for flat-file CMS</title>
+  <meta name="description" content="FREE MIT plugin for Grav. Register .mud pages. Compile MarkUpDown Design Spec — @@@ tokens, ::: fences, ++ NEXT Object Notation. Grav 1.7 + 2.0.">
+  <meta property="og:title" content="Grav MUD Alpha">
+  <meta property="og:description" content="Human/AI-friendly design language for Grav. Three primitives. No database.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Raleway:wght@600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #061410;
+      --fg: #ecfdf5;
+      --muted: #86b8a0;
+      --emerald: #10b981;
+      --emerald-bright: #34d399;
+      --lime: #a3e635;
+      --teal: #0d9488;
+      --card: rgba(16, 185, 129, 0.06);
+      --border: rgba(52, 211, 153, 0.18);
+      --glow: rgba(16, 185, 129, 0.35);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Raleway', ui-sans-serif, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -5%, rgba(16, 185, 129, 0.25), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 95% 20%, rgba(13, 148, 136, 0.2), transparent 50%),
+        linear-gradient(180deg, #0a1f18 0%, var(--bg) 45%, #041008 100%);
+      z-index: -1;
+    }
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding: 0.85rem 1.5rem;
+      backdrop-filter: blur(12px);
+      background: rgba(6, 20, 16, 0.82);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      text-decoration: none;
+      color: var(--fg);
+    }
+    .logo span { color: var(--emerald-bright); }
+    .nav-links { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-emerald {
+      background: linear-gradient(135deg, var(--teal), var(--emerald));
+      color: #042f1a;
+      box-shadow: 0 0 24px var(--glow);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .hero {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--emerald-bright);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+    }
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2.2rem, 6vw, 3.5rem);
+      line-height: 1.1;
+      margin: 0 0 1rem;
+      font-weight: 700;
+    }
+    h1 .accent {
+      background: linear-gradient(135deg, var(--lime), var(--emerald-bright));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 640px;
+      margin: 0 auto 1.75rem;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-bottom: 2.5rem; }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-bottom: 3rem;
+    }
+    .stat {
+      text-align: center;
+      min-width: 100px;
+    }
+    .stat-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--emerald-bright);
+    }
+    .stat-label { font-size: 0.8rem; color: var(--muted); }
+    section {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+    }
+    h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem;
+      margin: 0 0 1.25rem;
+      text-align: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+    .card h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      margin: 0 0 0.5rem;
+      color: var(--emerald-bright);
+    }
+    .card p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+    .card-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    pre {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      margin: 0;
+    }
+    .token { color: #f472b6; }
+    .fence { color: var(--emerald-bright); }
+    .key { color: #93c5fd; }
+    .install {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(13, 148, 136, 0.08));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    .install p { color: var(--muted); margin: 0 0 1rem; }
+    footer {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--emerald-bright); }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="logo" href="#">Grav <span>MUD</span> Alpha</a>
+    <div class="nav-links">
+      <a class="btn btn-ghost" href="#syntax">Syntax</a>
+      <a class="btn btn-ghost" href="#install">Install</a>
+      <a class="btn btn-ghost" href="https://github.com/GravMUD/grav-plugin-grav-mud-alpha">GitHub</a>
+      <a class="btn btn-emerald" href="https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/latest">Download 0.5.0</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow">MIT · Grav 1.7 + 2.0 · MarkUpDown Design Spec</span>
+    <h1>Flat-file pages.<br><span class="accent">Structured markup.</span></h1>
+    <p class="lead">Grav MUD Alpha registers <strong>.mud</strong> pages and compiles them to HTML — design tokens, layout fences, and NEXT Object Notation. No database. No React island required for a hero band.</p>
+    <div class="hero-actions">
+      <a class="btn btn-emerald" href="https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/latest">Get the plugin</a>
+      <a class="btn btn-ghost" href="https://gravmud.site/get-started">Full starter package</a>
+      <a class="btn btn-ghost" href="https://gravmud.site/language">Live spec on gravmud.site</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-num">3</div><div class="stat-label">Core primitives</div></div>
+      <div class="stat"><div class="stat-num">15+</div><div class="stat-label">Layout fences</div></div>
+      <div class="stat"><div class="stat-num">MIT</div><div class="stat-label">Free forever</div></div>
+      <div class="stat"><div class="stat-num">.mud</div><div class="stat-label">Page extension</div></div>
+    </div>
+  </header>
+
+  <section id="syntax">
+    <h2>Three primitives</h2>
+    <div class="grid" style="margin-bottom: 1.5rem;">
+      <div class="card">
+        <div class="card-icon">@@@</div>
+        <h3>Design tokens</h3>
+        <p>Page-level theme context — layout mode, CSS variables, design name.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">:::</div>
+        <h3>Layout fences</h3>
+        <p>Named blocks: hero, cards, pricing, timeline, compare, code, wiki, manifesto…</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">++</div>
+        <h3>NEXT Object Notation</h3>
+        <p>Structured config inside fences — lists, nested keys, multiline bodies.</p>
+      </div>
+    </div>
+    <pre><code><span class="token">@@@</span>
+<span class="key">name:</span> grav-official
+<span class="key">layout:</span> promo
+<span class="token">@@@</span>
+
+<span class="fence">::: hero</span>
+<span class="key">eyebrow:</span> Hello
+<span class="key">title:</span> Grav
+<span class="key">accent:</span> MUD
+<span class="key">lead:</span> One file. Full section.
+<span class="key">cta:</span>
+  - [Get started](https://gravmud.site/get-started) primary
+<span class="fence">:::</span></code></pre>
+  </section>
+
+  <section>
+    <h2>What the plugin does</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h3>Extension hook</h3>
+        <p>Registers <code>.mud</code> before Grav scans pages — discovery just works.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <h3>Compile pipeline</h3>
+        <p><code>onPageContentRaw</code> transforms MarkUpDown to HTML your theme styles.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌿</div>
+        <h3>Grav 2 ready</h3>
+        <p>Compatibility flags for 1.7 and 2.0 — pair with Admin2 or classic admin.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎁</div>
+        <h3>Commercial stays separate</h3>
+        <p>Commentz, Forumz, EvvyTink Admin, Mud Bazaar — not in this repo. Alpha is the free compiler.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <div class="install">
+      <p>Plugin only — pair with <strong>grav-mud-site</strong> theme or your own Twig theme.</p>
+      <pre style="text-align: left; max-width: 640px; margin: 0 auto 1.25rem;"><code>bin/gpm direct-install \
+  https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.5.0/grav-plugin-grav-mud-alpha.zip
+
+bin/grav cache</code></pre>
+      <a class="btn btn-emerald" href="https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/latest">Download release zip</a>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Grav MUD Alpha</strong> · MIT · FutureVision Labs · Team DC</p>
+    <p>
+      <a href="https://gravmud.site">gravmud.site</a> ·
+      <a href="https://github.com/GravMUD/grav-plugin-grav-mud-alpha">GitHub</a> ·
+      <a href="https://github.com/GravMUD/grav-plugin-grav-mud-alpha/discussions">Discussions</a> ·
+      <a href="https://javabean.gravmud.site">JavaBean for Admin2</a>
+    </p>
+  </footer>
+</body>
+</html>
