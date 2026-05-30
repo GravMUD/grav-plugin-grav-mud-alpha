@@ -175,6 +175,12 @@
       color: var(--emerald-bright);
     }
     .card p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+    .card a.card-link {
+      color: var(--emerald-bright);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .card a.card-link:hover { text-decoration: underline; }
     .card-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
     pre {
       background: rgba(0, 0, 0, 0.45);
@@ -293,6 +299,16 @@
         <div class="card-icon">🎁</div>
         <h3>Commercial stays separate</h3>
         <p>Commentz, Forumz, EvvyTink Admin, Mud Bazaar — not in this repo. Alpha is the free compiler.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">☕</div>
+        <h3><a class="card-link" href="https://javabean.gravmud.site">JavaBean for Admin2</a></h3>
+        <p>Andy builds the cathedral — we paint the flight deck. Twelve Admin2 presets, Paint Shop, MIT forever.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <h3><a class="card-link" href="https://gravmud.site/get-started">Starter package</a></h3>
+        <p>Plugin + <strong>grav-mud-site</strong> theme + demo <code>.mud</code> pages — the full overlay zip on gravmud.site.</p>
       </div>
     </div>
   </section>
