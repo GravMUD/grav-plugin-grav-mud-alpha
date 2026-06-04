@@ -1,3 +1,16 @@
+# v0.6.0
+## 06/04/2026
+
+1. [](#new)
+    * **Embed mode** — `?gravmud-embed=1` (alias `gravity-embed`) serves chromeless pages with `embed.html.twig`, theme CSS, and `frame-ancestors *` CSP for iframe demos
+    * Blog dispatch fences: `blog-post-header`, `blog-teaser`, `blog-index`, `blog-body`
+    * Video, gallery, carousel, wiki, badges, and receipts fence renderers
+    * Compiler hooks for Commentz, Forumz, Messenger, Mud Bazaar, Swag Store, and FlipZine theme config
+
+1. [](#improved)
+    * Expanded `MudDesignSpec` and `MudAlphaCompiler` parity with gravmud.site production pages
+    * README fence cheat sheet and install URLs updated for 0.6.0
+
 # v0.5.0
 ## 05/30/2026
 

@@ -10,6 +10,9 @@ class MudDesignSpec
 {
     private string $assetBase = '/user/themes/grav-mud-alpha/images/';
 
+    /** @var 'off'|'on'|'reduced-only' */
+    private string $pageMotion = 'off';
+
     public function setAssetBase(string $base): void
     {
         $this->assetBase = rtrim($base, '/') . '/';
@@ -88,6 +91,12 @@ class MudDesignSpec
             case 'theme':
             case 'spec-theme':
                 return $this->renderTheme($data, $attrs);
+            case 'gallery':
+            case 'spec-gallery':
+                return $this->renderGallery($data, $attrs, $body);
+            case 'carousel':
+            case 'spec-carousel':
+                return $this->renderCarousel($data, $attrs, $body);
             default:
                 return '';
         }
@@ -99,13 +108,26 @@ class MudDesignSpec
         $name = $this->esc((string) ($spec['name'] ?? 'mamber-dark'));
         $layout = $this->esc((string) ($spec['layout'] ?? 'expose'));
         $css = $this->buildTokenCss($spec['tokens'] ?? []);
+        $motionRaw = strtolower(trim((string) ($spec['motion'] ?? 'off')));
+        $motionClass = '';
+        if ($this->isTruthy($motionRaw) || $motionRaw === 'on') {
+            $this->pageMotion = 'on';
+            $motionClass = ' mud-motion';
+        } elseif ($motionRaw === 'reduced-only') {
+            $this->pageMotion = 'reduced-only';
+            $motionClass = ' mud-motion mud-motion--reduced-only';
+        } else {
+            $this->pageMotion = 'off';
+        }
 
-        return '<div class="mud-page mud-page--' . $name . '" data-mud-layout="' . $layout . '">'
+        return '<div class="mud-page mud-page--' . $name . $motionClass . '" data-mud-layout="' . $layout . '" data-mud-motion="' . $this->esc($this->pageMotion) . '">'
             . ($css ? '<style>' . $css . '</style>' : '');
     }
 
     public function renderDesignClose(): string
     {
+        $this->pageMotion = 'off';
+
         return '</div>';
     }
 
@@ -132,7 +154,7 @@ class MudDesignSpec
             $var = $map[$key] ?? ('--mud-' . preg_replace('/[^a-z0-9-]/', '-', strtolower($key)));
             $rules[] = $var . ': ' . $val . ';';
         }
-        return '.mud-page { ' . implode(' ', $rules) . ' }';
+        return '.mud-page { ' . implode(' ', $rules) . ' color: var(--text); background: var(--bg); }';
     }
 
     /** @param array<string, mixed> $data */
@@ -146,9 +168,107 @@ class MudDesignSpec
     private function renderHero(array $data, array $attrs): string
     {
         $id = $this->attrId($attrs);
+        $variant = strtolower(trim((string) ($attrs['variant'] ?? $data['variant'] ?? 'default')));
+        $variant = preg_replace('/[^a-z0-9-]/', '', $variant) ?? 'default';
+        if ($variant === '') {
+            $variant = 'default';
+        }
+
+        if ($variant === 'split') {
+            return $this->renderHeroSplit($data, $attrs, $id);
+        }
+
+        $inner = $this->buildHeroInner($data);
+        $classes = ['hero'];
+        if ($variant !== 'default') {
+            $classes[] = 'hero--' . $variant;
+        }
+        $align = strtolower(trim((string) ($data['align'] ?? '')));
+        if (in_array($align, ['center', 'right'], true)) {
+            $classes[] = 'hero--align-' . $align;
+        }
+
+        $bgRaw = trim((string) ($data['background'] ?? $data['bg'] ?? ''));
+        $styleVars = $this->heroStyleVars($data, $variant, $bgRaw);
+        $scrollHero = $this->sanitizeScrollHero(
+            (string) ($attrs['scroll-hero'] ?? $data['scroll-hero'] ?? $data['scroll'] ?? '')
+        );
+        $scrollLength = $this->heroScrollLength($data, $attrs);
+        if ($scrollHero !== '') {
+            $classes[] = 'hero--scroll-hero';
+        }
+
+        $motion = $scrollHero !== ''
+            ? ['extraClass' => '', 'dataAttr' => '']
+            : $this->motionFragment($attrs, $data, '');
+        if ($motion['extraClass'] !== '') {
+            $classes[] = trim($motion['extraClass']);
+        }
+
+        $parallax = strtolower(trim((string) ($data['parallax'] ?? '')));
+        $parallaxAttr = ($parallax !== '' && $parallax !== 'none')
+            ? ' data-hero-parallax="' . $this->esc($parallax) . '"' : '';
+
+        $scrollAttr = $scrollHero !== ''
+            ? ' data-scroll-hero="' . $this->esc($scrollHero) . '" data-scroll-length="' . $this->esc((string) $scrollLength) . '"'
+            : '';
+
+        $styleAttr = $this->inlineStyle($styleVars);
+        $hasBackdrop = $bgRaw !== '' || in_array($variant, ['fullscreen', 'banner'], true);
+        $backdrop = $hasBackdrop
+            ? '<div class="hero-media" aria-hidden="true"></div><div class="hero-scrim" aria-hidden="true"></div>'
+            : '';
+
+        $core = $backdrop . '<div class="hero-inner">' . $inner . '</div>';
+        if ($scrollHero !== '') {
+            $core = '<div class="hero-scroll-pin">' . $core . '</div>';
+        }
+
+        return '<section class="' . implode(' ', $classes) . '"' . $id . $motion['dataAttr'] . $parallaxAttr . $scrollAttr . $styleAttr . '>'
+            . $core
+            . '</section>';
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $attrs
+     */
+    private function renderHeroSplit(array $data, array $attrs, string $id): string
+    {
+        $inner = $this->buildHeroInner($data);
+        $mediaSide = strtolower(trim((string) ($data['media-side'] ?? $data['media_side'] ?? 'left')));
+        $classes = ['hero', 'hero--split'];
+        if ($mediaSide === 'right') {
+            $classes[] = 'hero--split-media-right';
+        }
+
+        $motion = $this->motionFragment($attrs, $data, '');
+        if ($motion['extraClass'] !== '') {
+            $classes[] = trim($motion['extraClass']);
+        }
+
+        $bgRaw = trim((string) ($data['background'] ?? $data['bg'] ?? ''));
+        $styleVars = $this->heroStyleVars($data, 'split', $bgRaw);
+        $styleAttr = $this->inlineStyle($styleVars);
+
+        $mediaHtml = $this->renderHeroSplitMedia($data, $bgRaw);
+        $copy = '<div class="hero-split-copy hero-inner">' . $inner . '</div>';
+        $grid = '<div class="hero-split-grid">'
+            . '<div class="hero-split-media">' . $mediaHtml . '</div>'
+            . $copy
+            . '</div>';
+
+        return '<section class="' . implode(' ', $classes) . '"' . $id . $motion['dataAttr'] . $styleAttr . '>'
+            . $grid
+            . '</section>';
+    }
+
+    /** @param array<string, mixed> $data */
+    private function buildHeroInner(array $data): string
+    {
         $mascotRaw = trim((string) ($data['mascot'] ?? ''));
         $mascot = ($mascotRaw !== '' && strtolower($mascotRaw) !== 'none')
-            ? $this->asset($mascotRaw) : '';
+            ? $this->mediaUrl($mascotRaw) : '';
         $eyebrow = (string) ($data['eyebrow'] ?? '');
         $title = (string) ($data['title'] ?? '');
         $accent = (string) ($data['accent'] ?? '');
@@ -172,16 +292,101 @@ class MudDesignSpec
             ? '<div class="hero-mascot-card"><img src="' . $this->esc($mascot) . '" alt="" class="hero-mascot" width="74" height="144" aria-hidden="true" /></div>'
             : '<div class="hero-mark" aria-hidden="true">MUD</div>';
 
-        return '<section class="hero"' . $id . '>'
-            . '<div class="hero-brand">'
+        return '<div class="hero-brand">'
             . $brandInner
             . '<div class="hero-brand-copy">'
             . ($eyebrow ? '<p class="eyebrow">' . $this->esc($eyebrow) . '</p>' : '')
             . ($title ? '<h1>' . $h1 . '</h1>' : '')
             . '</div></div>'
             . ($lead ? '<p class="lead">' . $this->inline($lead) . '</p>' : '')
-            . ($ctas ? '<div class="hero-actions">' . $ctas . '</div>' : '')
-            . '</section>';
+            . ($ctas ? '<div class="hero-actions">' . $ctas . '</div>' : '');
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return list<string>
+     */
+    private function heroStyleVars(array $data, string $variant, string $bgRaw): array
+    {
+        $styleVars = [];
+        if ($bgRaw !== '') {
+            $styleVars[] = '--hero-bg: ' . $this->cssUrl($this->mediaUrl($bgRaw));
+        }
+        $overlay = trim((string) ($data['overlay'] ?? ''));
+        if ($overlay !== '') {
+            $styleVars[] = '--hero-overlay: ' . $this->esc($overlay);
+        }
+        $overlayColor = trim((string) ($data['overlay-color'] ?? $data['overlay_color'] ?? ''));
+        if ($overlayColor !== '') {
+            $styleVars[] = '--hero-overlay-color: ' . $this->esc($overlayColor);
+        }
+        $height = trim((string) ($data['height'] ?? ''));
+        if ($height === '' && $variant === 'fullscreen') {
+            $height = '100dvh';
+        } elseif ($height === '' && $variant === 'banner') {
+            $height = '40vh';
+        }
+        if ($height !== '') {
+            $styleVars[] = '--hero-height: ' . $this->esc($height);
+        }
+
+        return $styleVars;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $attrs
+     */
+    private function heroScrollLength(array $data, array $attrs): float
+    {
+        $raw = trim((string) ($attrs['scroll-length'] ?? $data['scroll-length'] ?? $data['scroll_length'] ?? '1.4'));
+        $len = (float) $raw;
+
+        return max(1.0, min(3.0, $len > 0 ? $len : 1.4));
+    }
+
+    private function sanitizeScrollHero(string $raw): string
+    {
+        $raw = strtolower(trim($raw));
+        if ($raw === '' || in_array($raw, ['off', 'false', '0', 'none'], true)) {
+            return '';
+        }
+        if (in_array($raw, ['apple', 'story', 'product'], true)) {
+            return 'cinematic';
+        }
+        $allowed = ['fade', 'zoom', 'cinematic'];
+
+        return in_array($raw, $allowed, true) ? $raw : '';
+    }
+
+    /** @param array<string, mixed> $data */
+    private function renderHeroSplitMedia(array $data, string $bgRaw): string
+    {
+        $media = trim((string) ($data['media'] ?? $data['image'] ?? ''));
+        if ($media !== '') {
+            $alt = trim((string) ($data['media-alt'] ?? $data['image-alt'] ?? ''));
+
+            return '<img src="' . $this->esc($this->mediaUrl($media)) . '" alt="' . $this->esc($alt) . '" loading="eager" />';
+        }
+
+        $videoData = $data;
+        if ($this->isTruthy($data['media-autoplay'] ?? $data['autoplay'] ?? false)) {
+            $videoData['autoplay'] = true;
+            $videoData['muted'] = true;
+            $videoData['loop'] = $videoData['loop'] ?? true;
+        }
+
+        $embed = $this->buildVideoEmbed($videoData);
+        if ($embed !== '') {
+            return '<div class="hero-split-video">' . str_replace('{{iframe-title}}', 'Hero video', $embed) . '</div>';
+        }
+
+        if ($bgRaw !== '') {
+            return '<div class="hero-split-media-bg" style="background-image: '
+                . $this->cssUrl($this->mediaUrl($bgRaw)) . '" role="img" aria-hidden="true"></div>';
+        }
+
+        return '<div class="hero-split-media-fallback" aria-hidden="true"></div>';
     }
 
     /** @param array<string, mixed> $data */
@@ -192,7 +397,9 @@ class MudDesignSpec
         $cite = (string) ($data['cite'] ?? '');
         $note = (string) ($data['note'] ?? '');
 
-        return '<section class="quote-block"' . $id . '>'
+        $motion = $this->motionFragment($attrs, $data);
+
+        return '<section class="quote-block' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($quote ? '<blockquote>' . $this->inline($quote) . '</blockquote>' : '')
             . ($cite ? '<cite>' . $this->inline($cite) . '</cite>' : '')
             . ($note ? '<p class="quote-note">' . $this->inline($note) . '</p>' : '')
@@ -364,7 +571,9 @@ class MudDesignSpec
             }
         }
 
-        return '<section class="grid-section"' . $id . '>'
+        $motion = $this->motionFragment($attrs, $data, '');
+
+        return '<section class="grid-section' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($title ? '<h2>' . $this->esc($title) . '</h2>' : '')
             . ($cards ? '<div class="cards">' . $cards . '</div>' : '')
             . '</section>';
@@ -386,7 +595,9 @@ class MudDesignSpec
             }
         }
 
-        return '<section class="timeline"' . $id . '>'
+        $motion = $this->motionFragment($attrs, $data);
+
+        return '<section class="timeline' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($title ? '<h2>' . $this->esc($title) . '</h2>' : '')
             . ($items ? '<ol>' . $items . '</ol>' : '')
             . '</section>';
@@ -412,7 +623,9 @@ class MudDesignSpec
         }
         $note = (string) ($data['note'] ?? '');
 
-        return '<section class="compare"' . $id . '>'
+        $motion = $this->motionFragment($attrs, $data);
+
+        return '<section class="compare' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($title ? '<h2>' . $this->inline($title) . '</h2>' : '')
             . '<div class="compare-table">'
             . '<div class="compare-head"><span>' . $this->esc($left) . '</span><span>' . $this->esc($right) . '</span></div>'
@@ -455,7 +668,9 @@ class MudDesignSpec
         $body = trim((string) ($data['body'] ?? ''));
         $signoff = (string) ($data['signoff'] ?? '');
 
-        return '<section class="manifesto"' . $id . '>'
+        $motion = $this->motionFragment($attrs, $data);
+
+        return '<section class="manifesto' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($title ? '<h2>' . $this->inline($title) . '</h2>' : '')
             . ($body ? $renderMarkdown($body) : '')
             . ($signoff ? '<p class="sign-off">' . $this->safeHtml($signoff) . '</p>' : '')
@@ -599,7 +814,9 @@ class MudDesignSpec
             }
         }
 
-        return '<section class="pricing"' . $id . '>'
+        $motion = $this->motionFragment($attrs, $data);
+
+        return '<section class="pricing' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($title ? '<h2>' . $this->esc($title) . '</h2>' : '')
             . ($intro ? '<p class="pricing-intro">' . $this->inline($intro) . '</p>' : '')
             . ($plans ? '<div class="pricing-grid">' . $plans . '</div>' : '')
@@ -682,7 +899,9 @@ class MudDesignSpec
 
         $iframeTitle = $title !== '' ? $title : 'Embedded video';
 
-        return '<section class="mud-video"' . $id . '>'
+        $motion = $this->motionFragment($attrs, $data, '');
+
+        return '<section class="mud-video' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($title ? '<h2>' . $this->esc($title) . '</h2>' : '')
             . '<div class="mud-video-frame" style="aspect-ratio:' . $this->esc(str_replace(' ', '', $aspect)) . '">'
             . str_replace('{{iframe-title}}', $this->esc($iframeTitle), $embed)
@@ -760,22 +979,22 @@ class MudDesignSpec
     /** @param array<string, mixed> $data */
     private function renderYouTubeEmbed(string $id, array $data): string
     {
-        $params = ['rel' => '0', 'modestbranding' => '1'];
-        if (!empty($data['autoplay'])) {
-            $params['autoplay'] = '1';
-        }
         $start = (int) ($data['start'] ?? 0);
-        if ($start > 0) {
-            $params['start'] = (string) $start;
-        }
+        $autoplay = !empty($data['autoplay']) ? '1' : '0';
+        $watchUrl = 'https://www.youtube.com/watch?v=' . rawurlencode($id);
+        $poster = 'https://i.ytimg.com/vi/' . $this->esc($id) . '/hqdefault.jpg';
 
-        $query = http_build_query($params);
-        $src = 'https://www.youtube-nocookie.com/embed/' . rawurlencode($id) . '?' . $query;
-
-        return '<iframe class="mud-video-embed mud-video-youtube" src="' . $this->esc($src) . '" '
-            . 'title="{{iframe-title}}" loading="lazy" allowfullscreen '
-            . 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" '
-            . 'referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+        return '<div class="mud-youtube-facade" data-youtube-id="' . $this->esc($id) . '"'
+            . ' data-youtube-start="' . $start . '"'
+            . ' data-youtube-autoplay="' . $autoplay . '"'
+            . ' data-youtube-title="{{iframe-title}}">'
+            . '<button type="button" class="mud-youtube-play" aria-label="Play {{iframe-title}}">'
+            . '<img class="mud-youtube-poster" src="' . $poster . '" alt="" loading="lazy" decoding="async" />'
+            . '<span class="mud-youtube-play-icon" aria-hidden="true"></span>'
+            . '</button>'
+            . '<a class="mud-youtube-open" href="' . $this->esc($watchUrl) . '" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>'
+            . '<p class="mud-youtube-lan-note" hidden>LAN preview: YouTube blocks in-page embeds on IP addresses — tap play to open the app.</p>'
+            . '</div>';
     }
 
     /** @param array<string, mixed> $data */
@@ -857,6 +1076,157 @@ class MudDesignSpec
             'mov' => 'video/quicktime',
             default => '',
         };
+    }
+
+    /** @param array<string, mixed> $data */
+    private function renderGallery(array $data, array $attrs, string $body): string
+    {
+        $id = $this->attrId($attrs);
+        $title = (string) ($data['title'] ?? '');
+        $cols = (string) ($attrs['columns'] ?? $data['columns'] ?? '3');
+        $lightbox = $this->isTruthy($attrs['lightbox'] ?? $data['lightbox'] ?? false);
+        $items = $this->parseImageList($body, $data);
+        if (!$items) {
+            return '';
+        }
+
+        $figures = '';
+        foreach ($items as $item) {
+            $src = $this->mediaUrl((string) ($item['src'] ?? ''));
+            if ($src === '') {
+                continue;
+            }
+            $caption = (string) ($item['caption'] ?? '');
+            $alt = (string) ($item['alt'] ?? $caption);
+            $img = '<img src="' . $this->esc($src) . '" alt="' . $this->esc($alt) . '" loading="lazy" />';
+            $inner = $lightbox
+                ? '<button type="button" class="mud-gallery-zoom" data-full="' . $this->esc($src) . '" data-caption="' . $this->esc($caption) . '">' . $img . '</button>'
+                : $img;
+            $figures .= '<figure class="mud-gallery-item">' . $inner
+                . ($caption !== '' ? '<figcaption>' . $this->inline($caption) . '</figcaption>' : '')
+                . '</figure>';
+        }
+
+        $motion = $this->motionFragment($attrs, $data);
+        $classes = 'mud-gallery' . ($lightbox ? ' mud-gallery--lightbox' : '') . $motion['extraClass'];
+        return '<section class="' . trim($classes) . '"' . $id . $motion['dataAttr']
+            . ' style="--mud-gallery-cols:' . $this->esc($cols) . '">'
+            . ($title !== '' ? '<h2>' . $this->esc($title) . '</h2>' : '')
+            . '<div class="mud-gallery-grid">' . $figures . '</div>'
+            . '</section>';
+    }
+
+    /** @param array<string, mixed> $data */
+    private function renderCarousel(array $data, array $attrs, string $body): string
+    {
+        $id = $this->attrId($attrs);
+        $title = (string) ($data['title'] ?? '');
+        $autoplay = (int) ($attrs['autoplay'] ?? $data['autoplay'] ?? 0);
+        $aspect = (string) ($attrs['aspect'] ?? $data['aspect'] ?? '16/9');
+        $variant = strtolower((string) ($attrs['variant'] ?? $data['variant'] ?? 'flat'));
+        $is3d = in_array($variant, ['3d', 'coverflow', 'cover'], true);
+        $items = $this->parseImageList($body, $data);
+        if (!$items) {
+            return '';
+        }
+
+        $slides = '';
+        $dots = '';
+        $i = 0;
+        foreach ($items as $item) {
+            $src = $this->mediaUrl((string) ($item['src'] ?? ''));
+            if ($src === '') {
+                continue;
+            }
+            $caption = (string) ($item['caption'] ?? '');
+            $alt = (string) ($item['alt'] ?? $caption);
+            $active = $i === 0 ? ' is-active' : '';
+            $slides .= '<li class="mud-carousel-slide' . $active . '" id="mud-carousel-slide-' . $i . '">'
+                . '<figure><img src="' . $this->esc($src) . '" alt="' . $this->esc($alt) . '" loading="lazy" />'
+                . ($caption !== '' ? '<figcaption>' . $this->inline($caption) . '</figcaption>' : '')
+                . '</figure></li>';
+            $dots .= '<button type="button" class="mud-carousel-dot' . $active . '" data-slide="' . $i . '" aria-label="Slide ' . ($i + 1) . '"' . ($i === 0 ? ' aria-current="true"' : '') . '></button>';
+            $i++;
+        }
+        if ($slides === '') {
+            return '';
+        }
+
+        $motion = $this->motionFragment($attrs, $data);
+        $carouselClass = 'mud-carousel' . ($is3d ? ' mud-carousel--3d' : '') . $motion['extraClass'];
+
+        return '<section class="' . trim($carouselClass) . '"' . $id . $motion['dataAttr']
+            . ' data-autoplay="' . $autoplay . '" data-variant="' . $this->esc($is3d ? '3d' : 'flat') . '"'
+            . ' style="--mud-carousel-aspect:' . $this->esc($aspect) . '">'
+            . ($title !== '' ? '<h2>' . $this->esc($title) . '</h2>' : '')
+            . '<div class="mud-carousel-viewport">'
+            . '<button type="button" class="mud-carousel-prev" aria-label="Previous slide">&#8249;</button>'
+            . '<ol class="mud-carousel-track">' . $slides . '</ol>'
+            . '<button type="button" class="mud-carousel-next" aria-label="Next slide">&#8250;</button>'
+            . '</div>'
+            . '<div class="mud-carousel-dots" role="tablist">' . $dots . '</div>'
+            . '</section>';
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return list<array{src: string, caption?: string, alt?: string}>
+     */
+    private function parseImageList(string $body, array $data): array
+    {
+        $items = [];
+        if (!empty($data['items']) && is_array($data['items'])) {
+            foreach ($data['items'] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $src = (string) ($item['src'] ?? $item['img'] ?? $item['image'] ?? '');
+                if ($src === '') {
+                    continue;
+                }
+                $items[] = [
+                    'src' => $src,
+                    'caption' => (string) ($item['caption'] ?? $item['title'] ?? ''),
+                    'alt' => (string) ($item['alt'] ?? ''),
+                ];
+            }
+        }
+        if ($items) {
+            return $items;
+        }
+
+        $lines = [];
+        if (!empty($data['_lines']) && is_array($data['_lines'])) {
+            $lines = $data['_lines'];
+        } else {
+            $lines = preg_split('/\r?\n/', $body) ?: [];
+        }
+
+        foreach ($lines as $line) {
+            if (!preg_match('/^\s*-\s+(.+)$/', $line, $m)) {
+                continue;
+            }
+            $parts = array_map('trim', explode('|', $m[1], 2));
+            $src = $parts[0] ?? '';
+            if ($src === '') {
+                continue;
+            }
+            $items[] = [
+                'src' => $src,
+                'caption' => $parts[1] ?? '',
+            ];
+        }
+
+        return $items;
+    }
+
+    private function isTruthy(mixed $val): bool
+    {
+        if (is_bool($val)) {
+            return $val;
+        }
+        $s = strtolower(trim((string) $val));
+        return in_array($s, ['1', 'true', 'yes', 'on'], true);
     }
 
     /** @param array<string, mixed> $data */
@@ -1011,6 +1381,69 @@ class MudDesignSpec
         $path = preg_replace('#^/assets/#', '', $path) ?? $path;
         $path = ltrim($path, '/');
         return $this->assetBase . $path;
+    }
+
+    /**
+     * @param array<string, mixed> $attrs
+     * @param array<string, mixed> $data
+     * @return array{extraClass: string, dataAttr: string}
+     */
+    private function motionFragment(array $attrs, array $data, string $pageDefault = 'fade-up'): array
+    {
+        $animate = $this->resolveAnimate($attrs, $data, $pageDefault);
+        if ($animate === '') {
+            return ['extraClass' => '', 'dataAttr' => ''];
+        }
+
+        return [
+            'extraClass' => ' mud-reveal',
+            'dataAttr' => ' data-animate="' . $this->esc($animate) . '"',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $attrs
+     * @param array<string, mixed> $data
+     */
+    private function resolveAnimate(array $attrs, array $data, string $pageDefault = 'fade-up'): string
+    {
+        $raw = trim((string) ($attrs['animate'] ?? $data['animate'] ?? ''));
+        if ($raw !== '') {
+            return $this->sanitizeAnimate($raw);
+        }
+        if ($this->pageMotion === 'on' && $pageDefault !== '') {
+            return $this->sanitizeAnimate($pageDefault);
+        }
+
+        return '';
+    }
+
+    private function sanitizeAnimate(string $name): string
+    {
+        $name = strtolower(preg_replace('/[^a-z0-9-]/', '', $name) ?? '');
+        $allowed = ['fade-up', 'fade-in', 'reveal-left', 'stagger', 'glow-pulse', 'typewriter'];
+
+        return in_array($name, $allowed, true) ? $name : '';
+    }
+
+    /** Safe url() for HTML style="" attributes (outer attr uses double quotes). */
+    private function cssUrl(string $resolvedUrl): string
+    {
+        if ($resolvedUrl === '') {
+            return 'none';
+        }
+
+        return "url('" . $this->esc($resolvedUrl) . "')";
+    }
+
+    /** @param list<string> $pairs */
+    private function inlineStyle(array $pairs): string
+    {
+        if ($pairs === []) {
+            return '';
+        }
+
+        return ' style="' . implode('; ', $pairs) . '"';
     }
 
     /** @param array<string, string> $attrs */

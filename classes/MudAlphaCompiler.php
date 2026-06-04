@@ -26,6 +26,18 @@ class MudAlphaCompiler
 
     private string $forumApiBase = '/api/mud-forumz';
 
+    private string $commentApiBase = '/api/mud-commentz';
+
+    private string $messengerApiBase = '/api/mud-messenger';
+
+    private string $marketplaceRoute = 'shop';
+
+    private string $flipzineBase = 'https://flipzine.live';
+
+    private string $flipzineDefaultSlug = 'gwenbot-guide';
+
+    private string $swagRoute = 'shop';
+
 
 
     public function compile(string $source): string
@@ -65,6 +77,38 @@ class MudAlphaCompiler
         $this->forumApiBase = '/' . trim($base, '/');
     }
 
+    public function setCommentApiBase(string $base): void
+    {
+        $this->commentApiBase = '/' . trim($base, '/');
+    }
+
+    public function setMessengerApiBase(string $base): void
+    {
+        $this->messengerApiBase = '/' . trim($base, '/');
+    }
+
+    public function setMarketplaceRoute(string $route): void
+    {
+        $this->marketplaceRoute = trim($route, '/') ?: 'shop';
+    }
+
+    public function setFlipzineBase(string $base): void
+    {
+        $base = rtrim(trim($base), '/');
+        $this->flipzineBase = $base !== '' ? $base : 'https://flipzine.live';
+    }
+
+    public function setFlipzineDefaultSlug(string $slug): void
+    {
+        $slug = trim($slug);
+        $this->flipzineDefaultSlug = $slug !== '' ? $slug : 'gwenbot-guide';
+    }
+
+    public function setSwagRoute(string $route): void
+    {
+        $this->swagRoute = trim($route, '/') ?: 'shop';
+    }
+
     /** Compile a snippet for spec examples (nested fences). */
     public function compileSnippet(string $source): string
     {
@@ -74,6 +118,24 @@ class MudAlphaCompiler
         }
         if ($this->forumApiBase !== '/api/mud-forumz') {
             $compiler->setForumApiBase($this->forumApiBase);
+        }
+        if ($this->commentApiBase !== '/api/mud-commentz') {
+            $compiler->setCommentApiBase($this->commentApiBase);
+        }
+        if ($this->messengerApiBase !== '/api/mud-messenger') {
+            $compiler->setMessengerApiBase($this->messengerApiBase);
+        }
+        if ($this->marketplaceRoute !== 'shop') {
+            $compiler->setMarketplaceRoute($this->marketplaceRoute);
+        }
+        if ($this->flipzineBase !== 'https://flipzine.live') {
+            $compiler->setFlipzineBase($this->flipzineBase);
+        }
+        if ($this->flipzineDefaultSlug !== 'gwenbot-guide') {
+            $compiler->setFlipzineDefaultSlug($this->flipzineDefaultSlug);
+        }
+        if ($this->swagRoute !== 'shop') {
+            $compiler->setSwagRoute($this->swagRoute);
         }
         return $compiler->compile($source);
     }
@@ -272,7 +334,7 @@ class MudAlphaCompiler
 
 
 
-            if (preg_match('/^:::\s+/', $trim)) {
+            if (preg_match('/^:::\s*\S/', $trim)) {
 
                 $flushMd();
 
@@ -288,7 +350,7 @@ class MudAlphaCompiler
 
                     $innerTrim = trim($lines[$i]);
 
-                    if (preg_match('/^:::\s+\S/', $innerTrim)) {
+                    if (preg_match('/^:::\s*\S/', $innerTrim)) {
 
                         $fenceDepth++;
 
@@ -376,7 +438,7 @@ class MudAlphaCompiler
 
         return (bool) preg_match('/^\+\+\s/', $t)
 
-            || (bool) preg_match('/^:::\s/', $t)
+            || (bool) preg_match('/^:::\s*\S/', $t)
 
             || (bool) preg_match('/^@@@/', $t)
 
@@ -392,33 +454,81 @@ class MudAlphaCompiler
 
     {
 
-        $inner = trim(preg_replace('/^:::\s+/', '', $line) ?? '');
-
-        $parts = preg_split('/\s+/', $inner) ?: [];
-
-        $fenceType = strtolower($parts[0] ?? 'unknown');
+        $inner = trim(preg_replace('/^:::\s*/', '', $line) ?? '');
 
         $attrs = [];
 
-        for ($j = 1, $n = count($parts); $j < $n; $j++) {
+        $fenceType = 'unknown';
 
-            $token = $parts[$j];
+        $tail = $inner;
 
-            if (strpos($token, '=') !== false) {
+        if (preg_match('/^([\w-]+)\{([^}]*)\}(.*)$/', $inner, $m)) {
 
-                [$k, $v] = explode('=', $token, 2);
+            $fenceType = strtolower($m[1]);
 
-                $attrs[$k] = trim($v, "\"'");
+            $this->mergeFenceAttrs($m[2], $attrs);
 
-            } elseif (!isset($attrs['variant'])) {
+            $tail = trim($m[3]);
 
-                $attrs['variant'] = $token;
+        } else {
+
+            $parts = preg_split('/\s+/', $inner, 2) ?: [];
+
+            $fenceType = strtolower($parts[0] ?? 'unknown');
+
+            $tail = trim($parts[1] ?? '');
+
+        }
+
+        if ($tail !== '') {
+
+            $this->mergeFenceAttrs($tail, $attrs);
+
+            $tokens = preg_split('/\s+/', $tail) ?: [];
+
+            for ($j = 0, $n = count($tokens); $j < $n; $j++) {
+
+                $token = $tokens[$j];
+
+                if (strpos($token, '=') !== false || str_contains($token, '{')) {
+
+                    continue;
+
+                }
+
+                if (!isset($attrs['variant'])) {
+
+                    $attrs['variant'] = $token;
+
+                }
 
             }
 
         }
 
         return ['fenceType' => $fenceType, 'attrs' => $attrs];
+
+    }
+
+
+
+    /** @param array<string, string> $attrs */
+
+    private function mergeFenceAttrs(string $raw, array &$attrs): void
+
+    {
+
+        if (!preg_match_all('/([\w-]+)=(?:"([^"]*)"|\'([^\']*)\'|(\S+))/', $raw, $matches, PREG_SET_ORDER)) {
+
+            return;
+
+        }
+
+        foreach ($matches as $match) {
+
+            $attrs[$match[1]] = $match[2] !== '' ? $match[2] : ($match[3] !== '' ? $match[3] : $match[4]);
+
+        }
 
     }
 
@@ -564,6 +674,8 @@ class MudAlphaCompiler
 
             'theme', 'spec-theme',
 
+            'gallery', 'spec-gallery', 'carousel', 'spec-carousel',
+
         ];
 
 
@@ -642,6 +754,46 @@ class MudAlphaCompiler
 
 
 
+            case 'commentz':
+
+            case 'feed':
+
+                return $this->renderCommentzEmbed($attrs);
+
+
+
+            case 'marketplace':
+
+            case 'bazaar':
+
+            case 'shop':
+
+                return $this->renderMarketplaceEmbed($attrs);
+
+
+
+            case 'flipzine':
+
+            case 'zine':
+
+            case 'flipbook':
+
+                return $this->renderFlipzineEmbed($attrs);
+
+
+
+            case 'swag':
+
+            case 'printify':
+
+            case 'pod':
+
+            case 'merch':
+
+                return $this->renderSwagEmbed($attrs);
+
+
+
             case 'forum':
 
                 $board = (string) ($attrs['board'] ?? 'general');
@@ -683,10 +835,23 @@ class MudAlphaCompiler
             case 'forum-profiles':
 
                 $limit = (string) ($attrs['limit'] ?? '12');
+                $title = (string) ($attrs['title'] ?? '');
 
-                return '<section class="mud-forumz-wrap"><div class="mud-forumz" data-mud-forumz data-mode="profiles" data-limit="'
+                return '<section class="mud-forumz-wrap mud-forumz-wrap--profiles"><div class="mud-forumz" data-mud-forumz data-mode="profiles" data-limit="'
+                    . $this->esc($limit) . '" data-title="' . $this->esc($title)
+                    . '" data-api="' . $this->esc($this->forumApiBase) . '"><p class="mud-forumz-loading">Loading gravvers…</p></div></section>';
 
-                    . $this->esc($limit) . '" data-api="' . $this->esc($this->forumApiBase) . '"><p class="mud-forumz-loading">Loading gravvers…</p></div></section>';
+
+
+            case 'messenger':
+
+            case 'chat':
+
+            case 'chatbox':
+
+            case 'mud-messenger':
+
+                return $this->renderMessengerEmbed($attrs);
 
 
 
@@ -870,6 +1035,131 @@ class MudAlphaCompiler
 
         return $text;
 
+    }
+
+
+
+    /** @param array<string, string> $attrs */
+    private function renderCommentzEmbed(array $attrs): string
+    {
+        $pageId = (string) ($attrs['page-id'] ?? $attrs['page_id'] ?? $attrs['pageId'] ?? '/feed');
+        $title = (string) ($attrs['title'] ?? 'Your feed');
+        $dek = (string) ($attrs['dek'] ?? $attrs['description'] ?? 'Commentz-powered wall — flat-file posts, zero Zuckerberg.');
+        $variant = (string) ($attrs['variant'] ?? 'feed');
+
+        return '<section class="mud-commentz-wrap mud-commentz-wrap--' . $this->esc($variant) . '">'
+            . '<div class="mud-commentz" id="comments" data-mud-commentz data-page-id="' . $this->esc($pageId)
+            . '" data-api="' . $this->esc($this->commentApiBase) . '">'
+            . '<header class="mud-commentz-header">'
+            . '<p class="eyebrow">GravMUD Commentz™ · Feed</p>'
+            . '<h2 class="mud-commentz-title">' . $this->esc($title) . '</h2>'
+            . '<p class="mud-commentz-dek">' . $this->inlineMd($dek) . '</p>'
+            . '<p class="mud-commentz-count" aria-live="polite">Loading posts…</p>'
+            . '</header>'
+            . '<ol class="mud-commentz-list" aria-label="Feed posts"></ol>'
+            . '<form class="mud-commentz-form" autocomplete="off">'
+            . '<h3 class="mud-commentz-form-title">What\'s on your mind?</h3>'
+            . '<label class="mud-commentz-field"><span>Callsign</span>'
+            . '<input type="text" name="name" maxlength="80" required placeholder="Your name…" /></label>'
+            . '<label class="mud-commentz-field"><span>Status</span>'
+            . '<textarea name="body" rows="4" maxlength="4000" required placeholder="Share something…"></textarea></label>'
+            . '<label class="mud-commentz-honey" aria-hidden="true"><span>Website</span>'
+            . '<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>'
+            . '<div class="mud-commentz-actions">'
+            . '<button type="submit" class="btn primary">Post →</button>'
+            . '<p class="mud-commentz-status" role="status"></p>'
+            . '</div></form></div>'
+            . '</section>';
+    }
+
+    /** @param array<string, string> $attrs */
+    private function renderMessengerEmbed(array $attrs): string
+    {
+        $group = (string) ($attrs['group'] ?? $attrs['room'] ?? 'general');
+        $title = (string) ($attrs['title'] ?? 'Community chat');
+        $giphy = (string) ($attrs['giphy'] ?? '1');
+
+        return '<section class="mud-messenger-wrap">'
+            . '<header class="mud-messenger-wrap-head"><h2>' . $this->esc($title) . '</h2></header>'
+            . '<div class="mud-messenger-embed" data-mud-messenger-embed data-group="' . $this->esc($group)
+            . '" data-api="' . $this->esc($this->messengerApiBase) . '" data-giphy="' . $this->esc($giphy) . '"></div>'
+            . '</section>';
+    }
+
+    /** @param array<string, string> $attrs */
+    private function renderMarketplaceEmbed(array $attrs): string
+    {
+        $route = trim((string) ($attrs['route'] ?? $attrs['prefix'] ?? $this->marketplaceRoute), '/');
+        $title = (string) ($attrs['title'] ?? 'Shop');
+        $caption = (string) ($attrs['caption'] ?? 'Powered by GravMUD Marketplace plugin.');
+        $height = (int) ($attrs['height'] ?? 720);
+        if ($height < 320) {
+            $height = 320;
+        }
+        $src = '/' . $route;
+
+        return '<section class="mud-marketplace-wrap">'
+            . '<header class="mud-marketplace-head">'
+            . '<h2 class="mud-marketplace-title">' . $this->esc($title) . '</h2>'
+            . ($caption !== '' ? '<p class="mud-marketplace-caption">' . $this->inlineMd($caption) . '</p>' : '')
+            . '<p class="mud-marketplace-open"><a href="' . $this->esc($src) . '" target="_blank" rel="noopener">Open full storefront →</a></p>'
+            . '</header>'
+            . '<iframe class="mud-marketplace-embed" src="' . $this->esc($src) . '" title="' . $this->esc($title) . '" loading="lazy" style="min-height:' . $height . 'px"></iframe>'
+            . '</section>';
+    }
+
+    /** @param array<string, string> $attrs */
+    private function renderFlipzineEmbed(array $attrs): string
+    {
+        $base = rtrim(trim((string) ($attrs['base'] ?? $attrs['url'] ?? $this->flipzineBase)), '/');
+        if ($base === '') {
+            $base = 'https://flipzine.live';
+        }
+        $slug = trim((string) ($attrs['slug'] ?? $attrs['issue'] ?? $this->flipzineDefaultSlug));
+        if ($slug === '') {
+            $slug = 'gwenbot-guide';
+        }
+        $title = (string) ($attrs['title'] ?? 'FlipZine reader');
+        $caption = (string) ($attrs['caption'] ?? 'Powered by **FlipZine.Live** — PDF in, page-flip out.');
+        $height = (int) ($attrs['height'] ?? 640);
+        if ($height < 320) {
+            $height = 320;
+        }
+        $embedSrc = $base . '/embed/' . rawurlencode($slug);
+        $readSrc = $base . '/read/' . rawurlencode($slug);
+
+        return '<section class="mud-flipzine-wrap">'
+            . '<header class="mud-flipzine-head">'
+            . '<h2 class="mud-flipzine-title">' . $this->esc($title) . '</h2>'
+            . ($caption !== '' ? '<p class="mud-flipzine-caption">' . $this->inlineMd($caption) . '</p>' : '')
+            . '<p class="mud-flipzine-open"><a href="' . $this->esc($readSrc) . '" target="_blank" rel="noopener">Open full reader →</a></p>'
+            . '</header>'
+            . '<iframe class="mud-flipzine-embed" src="' . $this->esc($embedSrc) . '" title="' . $this->esc($title) . '" loading="lazy" allow="autoplay" style="min-height:' . $height . 'px"></iframe>'
+            . '</section>';
+    }
+
+    /** @param array<string, string> $attrs */
+    private function renderSwagEmbed(array $attrs): string
+    {
+        $route = trim((string) ($attrs['route'] ?? $attrs['prefix'] ?? $this->swagRoute), '/');
+        $route = preg_replace('#/embed$#', '', $route);
+        $title = (string) ($attrs['title'] ?? 'Merch shop');
+        $caption = (string) ($attrs['caption'] ?? 'Powered by **GravMUD Swag Store** + Printify Pop-Up Store.');
+        $height = (int) ($attrs['height'] ?? 720);
+        if ($height < 320) {
+            $height = 320;
+        }
+        $shopUrl = '/' . $route;
+        $embedSrc = $shopUrl . '/embed?embed=1';
+
+        return '<section class="mud-swag-wrap">'
+            . '<header class="mud-swag-head">'
+            . '<h2 class="mud-swag-title">' . $this->esc($title) . '</h2>'
+            . ($caption !== '' ? '<p class="mud-swag-caption">' . $this->inlineMd($caption) . '</p>' : '')
+            . '<p class="mud-swag-open"><a href="' . $this->esc($shopUrl) . '" target="_blank" rel="noopener">Open full shop page →</a></p>'
+            . '</header>'
+            . '<iframe class="mud-swag-embed" src="' . $this->esc($embedSrc) . '" title="' . $this->esc($title) . '" loading="lazy" style="min-height:' . $height . 'px"></iframe>'
+            . '</section>';
     }
 
 

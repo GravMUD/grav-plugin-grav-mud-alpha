@@ -34,7 +34,7 @@ bin/gpm install grav-mud-alpha
 ### Manual
 
 ```bash
-bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.5.0/grav-plugin-grav-mud-alpha.zip
+bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.6.0/grav-plugin-grav-mud-alpha.zip
 ```
 
 Or extract to `user/plugins/grav-mud-alpha`, then clear cache.
@@ -72,6 +72,65 @@ lead: One file. Full section.
 ```
 
 Save as `user/pages/01.home/default.mud`, enable the plugin, clear cache.
+
+## Layout fence cheat sheet
+
+Full reference with live **source | HTML** previews: **[gravmud.site/spec](https://gravmud.site/spec)**
+
+Every fence also accepts a `spec-*` alias (e.g. `spec-hero`). Page wrapper: `@@@` … `@@@` with `name:` and `layout:`.
+
+| Fence | Purpose |
+|-------|---------|
+| `::: hero` | Landing band — eyebrow, title, accent, lead, CTAs |
+| `::: quote` | Pull quote + cite |
+| `::: cards` | Card grid (`card:` blocks) |
+| `::: timeline` | Dated events (`event:` blocks) |
+| `::: compare` | Two-column comparison table (`row:` blocks) |
+| `::: pricing` | Tier cards (`plan:` blocks) |
+| `::: manifesto` | Closing pitch + signoff |
+| `::: code` | Escaped doc sample |
+| `::: video` | YouTube, Vimeo, or self-hosted embed |
+| `::: gallery` / `::: carousel` | Image grid or reel |
+| `::: blog-post-header` | Dispatch title block — date, dek, back link |
+| `::: blog-teaser` | Homepage “latest post” promo |
+| `::: blog-index` | Blog feed listing (`post:` / `posts:`) |
+| `::: blog-body` | Article body wrapper (markdown `body:`) |
+| `::: teeman` / `::: profile` | Avatar + cover art row (expose sites) |
+| `::: receipts` / `::: trophies` / `::: guestbook` | Receipt/archive blocks |
+
+### Blog dispatch pattern
+
+Typical post: header fence, then profile/body (Lone Mamber uses `blog-body` on `::: teeman`):
+
+```mud
+::: blog-post-header
+date: 1 Jun 2026
+title: Lone Mamber GRAVitates
+dek: Blogspot → Joomla → Grav CMS — the relaunch receipt.
+back: /blog/
+byline: Dr. D. Charles Caynes · FutureVision Labs
+:::
+
+::: teeman id=author blog-body article-cover
+title: Dispatch hero caption
+avatar: lone-mamber-avatar.png
+cover: lone-mamber-hero.png
+:::
+
+Prose continues here — markdown paragraphs, `::: compare`, etc.
+```
+
+Homepage teaser:
+
+```mud
+::: blog-teaser
+eyebrow: Latest dispatch
+title: Why Grav MUD exists
+lede: One `.mud` file. Full layout. Zero Twig soup.
+link: /blog/why-grav-mud
+link-label: Read the post →
+:::
+```
 
 ## Configuration
 

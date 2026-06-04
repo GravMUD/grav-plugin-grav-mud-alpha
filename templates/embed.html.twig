@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="{{ grav.language.getActive ?: 'en' }}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% if header.title %}{{ header.title }} — {% endif %}{{ site.title }}</title>
+  <meta name="description" content="{{ header.metadata.description|default(site.metadata.description) }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  {% for style in grav_mud_embed_styles %}
+  <link rel="stylesheet" href="{{ style }}" />
+  {% endfor %}
+</head>
+<body class="{{ grav_mud_embed_body_class }}{% if page.header.format in ['mud', 'mud-spec'] %} mud-spec-body{% endif %}">
+  <main class="site-main mud-content grav-mud-embed-main">
+    {{ page.content|raw }}
+  </main>
+</body>
+</html>
