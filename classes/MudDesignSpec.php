@@ -49,6 +49,9 @@ class MudDesignSpec
             case 'profile':
             case 'spec-profile':
                 return $this->renderProfile($data, $attrs, $renderMarkdown);
+            case 'teeman-meme':
+            case 'spec-teeman-meme':
+                return $this->renderTeemanMeme($data, $attrs);
             case 'guestbook':
             case 'spec-guestbook':
                 return $this->renderGuestbook($data, $attrs, $renderMarkdown);
@@ -530,6 +533,127 @@ class MudDesignSpec
         }
 
         return $html . '</section>';
+    }
+
+    /** Two-panel comparison meme — configurable left/right columns with legacy Bri Bri keys. */
+    /** @param array<string, mixed> $data */
+    private function renderTeemanMeme(array $data, array $attrs): string
+    {
+        $id = $this->attrId($attrs);
+        $lede = (string) ($data['lede'] ?? '');
+        $footer = (string) ($data['footer'] ?? 'Same playbook. Different blazer.');
+        $aria = (string) ($data['aria-label'] ?? '');
+
+        $leftTitle = (string) ($data['left-title'] ?? $data['negative-title'] ?? 'Negative Marketing');
+        $rightTitle = (string) ($data['right-title'] ?? $data['ambush-title'] ?? 'Ambush Marketing');
+        $leftDate = (string) ($data['left-date'] ?? $data['negative-date'] ?? '28 May 2026');
+        $rightDate = (string) ($data['right-date'] ?? $data['ambush-date'] ?? '19 May 2026');
+        $leftSubtitle = (string) ($data['left-subtitle'] ?? 'The Rise of Negative Marketing');
+        $rightSubtitle = (string) ($data['right-subtitle'] ?? 'nine days earlier · same guy');
+        $leftCover = $this->asset((string) ($data['left-cover'] ?? $data['negative-cover'] ?? 'brian-teeman-negative-marketing.png'));
+        $rightCover = $this->asset((string) ($data['right-cover'] ?? $data['cover'] ?? 'brian-teeman-ambush-marketing.png'));
+        $leftCoverAlt = (string) ($data['left-cover-alt'] ?? 'Left panel cover art');
+        $rightCoverAlt = (string) ($data['right-cover-alt'] ?? 'Right panel cover art');
+        $leftPanel = (string) ($data['left-panel'] ?? 'bad');
+        $rightPanel = (string) ($data['right-panel'] ?? 'good');
+        $leftBulletsLabel = (string) ($data['left-bullets-label'] ?? 'He lists these as the problem:');
+        $rightBulletsLabel = (string) ($data['right-bullets-label'] ?? 'Same list — his Ambush how-to calls it:');
+        $leftVerdictKicker = (string) ($data['left-verdict-kicker'] ?? 'Brian says');
+        $rightVerdictKicker = (string) ($data['right-verdict-kicker'] ?? 'Brian says');
+        $leftVerdictQuote = (string) ($data['left-verdict-quote'] ?? 'Don\'t be a dick.');
+        $rightVerdictQuote = (string) ($data['right-verdict-quote'] ?? 'bold strategy');
+        $leftVerdictNote = (string) ($data['left-verdict-note'] ?? 'Bad — he\'s putting negative marketing down');
+        $rightVerdictNote = (string) ($data['right-verdict-note'] ?? 'Only for Ambush — nine days earlier');
+
+        $defaultBullets = [
+            'Piggyback on someone else\'s moment',
+            'Move faster than official messaging',
+            'Highlight what they didn\'t say',
+            'Blur official vs unofficial',
+            'Undermine contributors for visibility',
+            'Capture attention without paying for it',
+        ];
+        $leftBullets = $defaultBullets;
+        $rightBullets = $defaultBullets;
+        if (!empty($data['bullets']) && is_array($data['bullets'])) {
+            $leftBullets = array_map('strval', $data['bullets']);
+            $rightBullets = $leftBullets;
+        }
+        if (!empty($data['left-bullets']) && is_array($data['left-bullets'])) {
+            $leftBullets = array_map('strval', $data['left-bullets']);
+        }
+        if (!empty($data['right-bullets']) && is_array($data['right-bullets'])) {
+            $rightBullets = array_map('strval', $data['right-bullets']);
+        }
+
+        $leftBulletHtml = '';
+        foreach ($leftBullets as $line) {
+            $leftBulletHtml .= '<li>' . $this->inline($line) . '</li>';
+        }
+        $rightBulletHtml = '';
+        foreach ($rightBullets as $line) {
+            $rightBulletHtml .= '<li>' . $this->inline($line) . '</li>';
+        }
+
+        $leftDateHtml = $this->esc($leftDate);
+        if ($leftSubtitle !== '') {
+            $leftDateHtml .= ' · <em>' . $this->inline($leftSubtitle) . '</em>';
+        }
+        $rightDateHtml = $this->esc($rightDate);
+        if ($rightSubtitle !== '') {
+            $rightDateHtml .= ' · <em>' . $this->inline($rightSubtitle) . '</em>';
+        }
+
+        if ($aria === '') {
+            $aria = 'Comparison: ' . $leftTitle . ' vs ' . $rightTitle;
+        }
+
+        $linksHtml = '';
+        if (!empty($data['links'])) {
+            $linksHtml = '<p class="teeman-meme-links">' . $this->inline((string) $data['links']) . '</p>';
+        } elseif (!isset($data['links'])) {
+            $linksHtml = '<p class="teeman-meme-links">'
+                . '<a href="https://brian.teeman.net/joomla/998-the-rise-of-negative-marketing" rel="noopener noreferrer">Negative Marketing</a>'
+                . ' · '
+                . '<a href="https://brian.teeman.net/joomla/994-ambush-marketing" rel="noopener noreferrer">Ambush Marketing</a>'
+                . '</p>';
+        }
+
+        return '<section class="teeman-meme"' . $id . '>'
+            . ($lede ? '<p class="teeman-meme-lede">' . $this->inline($lede) . '</p>' : '')
+            . '<div class="teeman-meme-grid" role="img" aria-label="' . $this->esc($aria) . '">'
+            . '<div class="teeman-meme-panel teeman-meme-panel--' . $this->esc($leftPanel) . '">'
+            . '<h2 class="teeman-meme-title">' . $this->inline($leftTitle) . '</h2>'
+            . '<p class="teeman-meme-date">' . $leftDateHtml . '</p>'
+            . '<figure class="teeman-meme-cover">'
+            . '<img src="' . $this->esc($leftCover) . '" alt="' . $this->esc($leftCoverAlt) . '" loading="lazy" />'
+            . '</figure>'
+            . ($leftBulletsLabel !== '' ? '<p class="teeman-meme-bullets-label">' . $this->inline($leftBulletsLabel) . '</p>' : '')
+            . '<ul class="teeman-meme-bullets">' . $leftBulletHtml . '</ul>'
+            . '<p class="teeman-meme-verdict teeman-meme-verdict--' . $this->esc($leftPanel) . '">'
+            . ($leftVerdictKicker !== '' ? '<span class="teeman-meme-verdict-kicker">' . $this->inline($leftVerdictKicker) . '</span>' : '')
+            . '<strong class="teeman-meme-verdict-quote">' . $this->inline($leftVerdictQuote) . '</strong>'
+            . ($leftVerdictNote !== '' ? '<span class="teeman-meme-verdict-note">' . $this->inline($leftVerdictNote) . '</span>' : '')
+            . '</p>'
+            . '</div>'
+            . '<div class="teeman-meme-panel teeman-meme-panel--' . $this->esc($rightPanel) . '">'
+            . '<h2 class="teeman-meme-title">' . $this->inline($rightTitle) . '</h2>'
+            . '<p class="teeman-meme-date">' . $rightDateHtml . '</p>'
+            . '<figure class="teeman-meme-cover">'
+            . '<img src="' . $this->esc($rightCover) . '" alt="' . $this->esc($rightCoverAlt) . '" loading="lazy" />'
+            . '</figure>'
+            . ($rightBulletsLabel !== '' ? '<p class="teeman-meme-bullets-label">' . $this->inline($rightBulletsLabel) . '</p>' : '')
+            . '<ul class="teeman-meme-bullets">' . $rightBulletHtml . '</ul>'
+            . '<p class="teeman-meme-verdict teeman-meme-verdict--' . $this->esc($rightPanel) . '">'
+            . ($rightVerdictKicker !== '' ? '<span class="teeman-meme-verdict-kicker">' . $this->inline($rightVerdictKicker) . '</span>' : '')
+            . '<strong class="teeman-meme-verdict-quote">' . $this->inline($rightVerdictQuote) . '</strong>'
+            . ($rightVerdictNote !== '' ? '<span class="teeman-meme-verdict-note">' . $this->inline($rightVerdictNote) . '</span>' : '')
+            . '</p>'
+            . '</div>'
+            . '</div>'
+            . ($footer !== '' ? '<p class="teeman-meme-footer">' . $this->inline($footer) . '</p>' : '')
+            . $linksHtml
+            . '</section>';
     }
 
     /** @param array<string, mixed> $data */

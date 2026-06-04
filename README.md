@@ -34,7 +34,7 @@ bin/gpm install grav-mud-alpha
 ### Manual
 
 ```bash
-bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.6.0/grav-plugin-grav-mud-alpha.zip
+bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.7.0/grav-plugin-grav-mud-alpha.zip
 ```
 
 Or extract to `user/plugins/grav-mud-alpha`, then clear cache.
@@ -96,6 +96,7 @@ Every fence also accepts a `spec-*` alias (e.g. `spec-hero`). Page wrapper: `@@@
 | `::: blog-index` | Blog feed listing (`post:` / `posts:`) |
 | `::: blog-body` | Article body wrapper (markdown `body:`) |
 | `::: teeman` / `::: profile` | Avatar + cover art row (expose sites) |
+| `::: teeman-meme` | Two-panel comparison meme (`left-title`, `right-title`, covers, bullets, verdicts) |
 | `::: receipts` / `::: trophies` / `::: guestbook` | Receipt/archive blocks |
 
 ### Blog dispatch pattern
@@ -118,6 +119,14 @@ cover: lone-mamber-hero.png
 :::
 
 Prose continues here — markdown paragraphs, `::: compare`, etc.
+```
+
+**GFM pipe tables** in `.mud` body markdown compile to `<table class="mud-md-table">` inside `.mud-md-table-wrap` (add theme CSS as needed):
+
+```markdown
+| Column A | Column B |
+|---|---|
+| Row one | Row two |
 ```
 
 Homepage teaser:

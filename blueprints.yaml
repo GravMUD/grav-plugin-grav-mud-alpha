@@ -1,7 +1,7 @@
 name: Grav MUD Alpha
 slug: grav-mud-alpha
 type: plugin
-version: 0.6.0
+version: 0.7.0
 description: Grav MUD (Alpha) — MarkUpDown Design Spec compiler and .mud page extension for Grav.
 icon: plug
 author:

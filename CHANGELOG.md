@@ -1,3 +1,13 @@
+# v0.7.0
+## 06/02/2026
+
+1. [](#new)
+    * **`::: teeman-meme`** — generalized two-panel comparison fence (`left-title` / `right-title`, separate bullet lists, verdict blocks, panel tones); legacy `negative-*` / `ambush-*` keys still work
+    * **GFM pipe tables** in markdown bodies — `| col |` rows compile to `<table class="mud-md-table">` inside `.mud-md-table-wrap`
+
+1. [](#improved)
+    * README fence cheat sheet documents `teeman-meme` and pipe-table markdown
+
 # v0.6.0
 ## 06/04/2026
 

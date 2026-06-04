@@ -112,7 +112,7 @@ class GravMudAlphaPlugin extends Plugin
         $twig = $this->grav['twig'];
         $twig->twig_vars['grav_mud_alpha'] = [
             'name' => 'Grav MUD Alpha',
-            'version' => '0.6.0',
+            'version' => '0.7.0',
             'notation' => 'NEXT Object Notation',
             'format' => 'MarkUpDown Design Spec (.mud)',
         ];

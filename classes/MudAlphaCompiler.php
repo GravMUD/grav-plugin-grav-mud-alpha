@@ -658,6 +658,8 @@ class MudAlphaCompiler
 
             'wiki', 'spec-wiki', 'teeman', 'profile', 'spec-profile',
 
+            'teeman-meme', 'spec-teeman-meme',
+
             'guestbook', 'spec-guestbook', 'cards', 'spec-cards',
 
             'timeline', 'spec-timeline', 'compare', 'spec-compare',
@@ -925,7 +927,22 @@ class MudAlphaCompiler
         return $this->getDesign()->parseStructuredBody($body);
     }
 
+    private function isMdTableRow(string $line): bool
+    {
+        return (bool) preg_match('/^\|.+\|$/', trim($line));
+    }
 
+    private function isMdTableSeparator(string $line): bool
+    {
+        return (bool) preg_match('/^\|[\s|:-]+\|$/', trim($line));
+    }
+
+    /** @return list<string> */
+    private function parseMdTableCells(string $line): array
+    {
+        $inner = trim(trim($line), '|');
+        return array_map('trim', explode('|', $inner));
+    }
 
     private function renderMarkdown(string $content): string
 
@@ -941,7 +958,13 @@ class MudAlphaCompiler
 
         $inUl = false;
 
-        foreach (preg_split('/\r?\n/', $content) as $line) {
+        $lines = preg_split('/\r?\n/', $content) ?: [];
+
+        $n = count($lines);
+
+        for ($i = 0; $i < $n; $i++) {
+
+            $line = $lines[$i];
 
             if (preg_match('/^(#{1,6})\s+(.+)$/', $line, $h)) {
 
@@ -998,6 +1021,58 @@ class MudAlphaCompiler
             }
 
             if (!trim($line)) {
+
+                continue;
+
+            }
+
+            if (preg_match('/^\s*<[^>]+>/', $line)) {
+
+                $out[] = $line;
+
+                continue;
+
+            }
+
+            if ($this->isMdTableRow($line) && ($i + 1) < $n && $this->isMdTableSeparator($lines[$i + 1])) {
+
+                $headerCells = $this->parseMdTableCells($line);
+
+                $i += 2;
+
+                $table = '<div class="mud-md-table-wrap"><table class="mud-md-table"><thead><tr>';
+
+                foreach ($headerCells as $cell) {
+
+                    $table .= '<th>' . $this->inlineMd($cell) . '</th>';
+
+                }
+
+                $table .= '</tr></thead><tbody>';
+
+                while ($i < $n && $this->isMdTableRow($lines[$i]) && !$this->isMdTableSeparator($lines[$i])) {
+
+                    $cells = $this->parseMdTableCells($lines[$i]);
+
+                    $table .= '<tr>';
+
+                    foreach ($headerCells as $idx => $_) {
+
+                        $table .= '<td>' . $this->inlineMd($cells[$idx] ?? '') . '</td>';
+
+                    }
+
+                    $table .= '</tr>';
+
+                    $i++;
+
+                }
+
+                $table .= '</tbody></table></div>';
+
+                $out[] = $table;
+
+                $i--;
 
                 continue;
 
