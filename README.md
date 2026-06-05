@@ -25,11 +25,14 @@ No Admin2 or API plugin required — this is a front-end page compiler.
 
 ## Installation
 
-### GPM (once listed)
+### GPM
 
 ```bash
 bin/gpm install grav-mud-alpha
+bin/grav cache
 ```
+
+Listed via [getgrav/grav#4106](https://github.com/getgrav/grav/issues/4106) — Andy: *"Should be in GPM now."*
 
 ### Manual
 
@@ -151,7 +154,7 @@ Admin → Plugins → **Grav MUD Alpha**
 
 ## Commercial plugins
 
-This repo is **MIT and free forever**. Commercial GravMUD plugins (EvvyTink Admin, Commentz, Forumz, Mud Bazaar, etc.) are **not** included — see [gravmud.site/marketplace](https://gravmud.site/marketplace).
+This repo is **MIT and free forever**. **GravMUD Admin (EvvyTink)** is also **MIT and free**. Commercial plugins (Commentz, Forumz, Mud Bazaar storefront, etc.) are sold separately — see [gravmud.site/marketplace](https://gravmud.site/marketplace).
 
 ## Development
 
