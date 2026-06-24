@@ -1,1 +1,3 @@
 enabled: true
+headless_api_route: api/mud
+headless_mode: all

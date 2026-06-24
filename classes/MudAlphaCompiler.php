@@ -4,7 +4,8 @@
 
 namespace Grav\Plugin\GravMudAlpha;
 
-
+use Grav\Common\Grav;
+use RocketTheme\Toolbox\Event\Event;
 
 /**
 
@@ -24,8 +25,6 @@ class MudAlphaCompiler
 
     private string $assetBase = '';
 
-    private string $forumApiBase = '/api/mud-forumz';
-
     private string $commentApiBase = '/api/mud-commentz';
 
     private string $messengerApiBase = '/api/mud-messenger';
@@ -38,7 +37,12 @@ class MudAlphaCompiler
 
     private string $swagRoute = 'shop';
 
+    private ?Grav $grav = null;
 
+    public function setGrav(Grav $grav): void
+    {
+        $this->grav = $grav;
+    }
 
     public function compile(string $source): string
 
@@ -70,11 +74,6 @@ class MudAlphaCompiler
 
         $this->getDesign()->setAssetBase($this->assetBase);
 
-    }
-
-    public function setForumApiBase(string $base): void
-    {
-        $this->forumApiBase = '/' . trim($base, '/');
     }
 
     public function setCommentApiBase(string $base): void
@@ -115,9 +114,6 @@ class MudAlphaCompiler
         $compiler = new self();
         if ($this->assetBase !== '') {
             $compiler->setAssetBase($this->assetBase);
-        }
-        if ($this->forumApiBase !== '/api/mud-forumz') {
-            $compiler->setForumApiBase($this->forumApiBase);
         }
         if ($this->commentApiBase !== '/api/mud-commentz') {
             $compiler->setCommentApiBase($this->commentApiBase);
@@ -732,13 +728,17 @@ class MudAlphaCompiler
 
             case 'section':
 
-                $id = !empty($attrs['id']) ? ' id="' . $this->esc($attrs['id']) . '"' : '';
+                $sectionData = $this->parseKeyValueBody($body);
+                $sectionId = (string) ($attrs['id'] ?? $sectionData['id'] ?? '');
+                $id = $sectionId !== '' ? ' id="' . $this->esc($sectionId) . '"' : '';
 
-                $inner = $children
-
-                    ? $this->renderNodes($children)
-
-                    : $this->renderMarkdown(trim($body));
+                if (!empty($sectionData['body'])) {
+                    $inner = $this->renderMarkdown(trim((string) $sectionData['body']));
+                } elseif ($children) {
+                    $inner = $this->renderNodes($children);
+                } else {
+                    $inner = $this->renderMarkdown(trim($body));
+                }
 
                 return '<section class="mud-section"' . $id . '>' . $inner . '</section>';
 
@@ -796,55 +796,6 @@ class MudAlphaCompiler
 
 
 
-            case 'forum':
-
-                $board = (string) ($attrs['board'] ?? 'general');
-
-                $limit = (string) ($attrs['limit'] ?? '20');
-
-                return '<section class="mud-forumz-wrap"><div class="mud-forumz" data-mud-forumz data-mode="board" data-board="'
-
-                    . $this->esc($board) . '" data-limit="' . $this->esc($limit)
-
-                    . '" data-api="' . $this->esc($this->forumApiBase) . '"><p class="mud-forumz-loading">Loading Forumz…</p></div></section>';
-
-
-
-            case 'forum-thread':
-
-                $board = (string) ($attrs['board'] ?? 'general');
-
-                $thread = (string) ($attrs['thread'] ?? '');
-
-                return '<section class="mud-forumz-wrap"><div class="mud-forumz" data-mud-forumz data-mode="thread" data-board="'
-
-                    . $this->esc($board) . '" data-thread="' . $this->esc($thread)
-
-                    . '" data-api="' . $this->esc($this->forumApiBase) . '"><p class="mud-forumz-loading">Loading thread…</p></div></section>';
-
-
-
-            case 'forum-profile':
-
-                $user = (string) ($attrs['user'] ?? $attrs['slug'] ?? '');
-
-                return '<section class="mud-forumz-wrap"><div class="mud-forumz" data-mud-forumz data-mode="profile" data-user="'
-
-                    . $this->esc($user) . '" data-api="' . $this->esc($this->forumApiBase) . '"><p class="mud-forumz-loading">Loading profile…</p></div></section>';
-
-
-
-            case 'forum-profiles':
-
-                $limit = (string) ($attrs['limit'] ?? '12');
-                $title = (string) ($attrs['title'] ?? '');
-
-                return '<section class="mud-forumz-wrap mud-forumz-wrap--profiles"><div class="mud-forumz" data-mud-forumz data-mode="profiles" data-limit="'
-                    . $this->esc($limit) . '" data-title="' . $this->esc($title)
-                    . '" data-api="' . $this->esc($this->forumApiBase) . '"><p class="mud-forumz-loading">Loading gravvers…</p></div></section>';
-
-
-
             case 'messenger':
 
             case 'chat':
@@ -858,6 +809,22 @@ class MudAlphaCompiler
 
 
             default:
+                if ($this->grav !== null) {
+                    $event = new Event([
+                        'type' => $t,
+                        'node' => $node,
+                        'attrs' => $attrs,
+                        'body' => $body,
+                        'data' => $data,
+                        'children' => $children,
+                        'html' => null,
+                    ]);
+                    $this->grav->fireEvent('onMudFenceRender', $event);
+                    $pluginHtml = $event['html'] ?? null;
+                    if (is_string($pluginHtml) && $pluginHtml !== '') {
+                        return $pluginHtml;
+                    }
+                }
 
                 return '<div class="mud-fence mud-fence--' . $this->esc($t) . '">'
 

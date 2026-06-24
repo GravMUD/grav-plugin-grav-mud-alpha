@@ -13,7 +13,9 @@
 - Supports **`@@@` design tokens**, **`:::` layout fences**, and **`++` NEXT Object Notation**
 - Works on **Grav 1.7** and **Grav 2.0**
 
-Pair with the **[grav-mud-site](https://github.com/GravMUD/grav-theme-grav-mud-site)** theme (coming soon) or your own Twig theme.
+Pair with **your theme** (e.g. **Cursy**) or the reference **[grav-mud-site](https://github.com/GravMUD/grav-theme-grav-mud-site)** theme for Theme Expo presets.
+
+**Baseline fence CSS** ships with this plugin: `assets/css/grav-mud-fences.css` — hero, cards, pricing, quote, etc. Themes map design tokens on `.mud-page`. Full marketing / agency presets remain optional in **grav-mud-site**.
 
 ## Requirements
 
@@ -22,6 +24,8 @@ Pair with the **[grav-mud-site](https://github.com/GravMUD/grav-theme-grav-mud-s
 | [Grav](https://github.com/getgrav/grav) | `>=1.7.0` |
 
 No Admin2 or API plugin required — this is a front-end page compiler.
+
+**Plugin fence extension:** other plugins (e.g. `grav-mud-goggrav`) can handle custom `::: fence` types via Grav event `onMudFenceRender` without extending the core spec. Full guide: [`Docs/GRAVMUD-PLUGIN-FENCE-EXTENSION.md`](../../Docs/GRAVMUD-PLUGIN-FENCE-EXTENSION.md).
 
 ## Installation
 
@@ -37,7 +41,7 @@ Listed via [getgrav/grav#4106](https://github.com/getgrav/grav/issues/4106) — 
 ### Manual
 
 ```bash
-bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.7.0/grav-plugin-grav-mud-alpha.zip
+bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.7.1/grav-plugin-grav-mud-alpha.zip
 ```
 
 Or extract to `user/plugins/grav-mud-alpha`, then clear cache.

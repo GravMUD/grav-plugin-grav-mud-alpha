@@ -1,3 +1,9 @@
+# v0.7.1
+## 06/05/2026
+
+1. [](#improved)
+    * **`grav-mud-fences.css`** — full Design Spec baseline CSS ships with the plugin (hero variants, spec-doc two-column examples, video/gallery/carousel, blog, Commentz/Forumz, theme-expo structure, motion). Third-party themes no longer need `grav-mud-site` for fence styling.
+
 # v0.7.0
 ## 06/02/2026
 

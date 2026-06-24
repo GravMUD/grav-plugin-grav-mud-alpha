@@ -1,7 +1,7 @@
 name: Grav MUD Alpha
 slug: grav-mud-alpha
 type: plugin
-version: 0.7.0
+version: 0.7.1
 description: Grav MUD (Alpha) — MarkUpDown Design Spec compiler and .mud page extension for Grav.
 icon: plug
 author:
@@ -30,3 +30,29 @@ form:
         0: Disabled
       validate:
         type: bool
+    headless_api_route:
+      type: text
+      label: Headless API route
+      help: Public JSON for MUD Shell — pages list and rendered .mud content (no API key).
+      default: api/mud
+      validate:
+        type: slug
+    headless_mode:
+      type: select
+      label: Headless page mode
+      help: Controls which .mud pages appear in MUD Shell API. Per-page headless true/false in frontmatter always overrides.
+      default: all
+      options:
+        all: All public .mud pages (optional include/exclude design lists)
+        opt-in: Only pages with headless true in frontmatter
+        design: Filter by @@@ design name lists below
+    headless_include_designs:
+      type: array
+      label: Headless include designs
+      help: Optional @@@ name allowlist (e.g. your campaign design token). Empty = no allowlist restriction.
+      value_only: true
+    headless_exclude_designs:
+      type: array
+      label: Headless exclude designs
+      help: Hide @@@ design names from MUD Shell API.
+      value_only: true
