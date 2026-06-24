@@ -112,6 +112,9 @@ class MudAlphaCompiler
     public function compileSnippet(string $source): string
     {
         $compiler = new self();
+        if ($this->grav !== null) {
+            $compiler->setGrav($this->grav);
+        }
         if ($this->assetBase !== '') {
             $compiler->setAssetBase($this->assetBase);
         }
@@ -726,6 +729,12 @@ class MudAlphaCompiler
 
 
 
+            case 'ticker':
+
+                return $this->renderTicker($attrs, $data, $body);
+
+
+
             case 'section':
 
                 $sectionData = $this->parseKeyValueBody($body);
@@ -818,6 +827,12 @@ class MudAlphaCompiler
                         'data' => $data,
                         'children' => $children,
                         'html' => null,
+                        'renderChildren' => function () use ($children): string {
+                            return $children ? $this->renderNodes($children) : '';
+                        },
+                        'renderMarkdown' => function (string $md): string {
+                            return $this->renderMarkdown($md);
+                        },
                     ]);
                     $this->grav->fireEvent('onMudFenceRender', $event);
                     $pluginHtml = $event['html'] ?? null;
@@ -1202,6 +1217,57 @@ class MudAlphaCompiler
             . '</header>'
             . '<iframe class="mud-swag-embed" src="' . $this->esc($embedSrc) . '" title="' . $this->esc($title) . '" loading="lazy" style="min-height:' . $height . 'px"></iframe>'
             . '</section>';
+    }
+
+
+
+    /** @param array<string, string> $attrs @param array<string, string|list<string>> $data */
+    private function renderTicker(array $attrs, array $data, string $body): string
+    {
+        $speed = (int) ($attrs['speed'] ?? $data['speed'] ?? 30);
+        if ($speed < 10) {
+            $speed = 10;
+        }
+        if ($speed > 120) {
+            $speed = 120;
+        }
+
+        $items = [];
+        foreach (preg_split('/\R/', trim($body)) ?: [] as $line) {
+            $line = trim((string) $line);
+            if ($line === '' || $line === '---') {
+                continue;
+            }
+            if (preg_match('/^[-*]\s+(.+)/', $line, $m)) {
+                $items[] = trim($m[1]);
+            } elseif (!str_contains($line, ':')) {
+                $items[] = $line;
+            }
+        }
+
+        if ($items === [] && isset($data['items']) && is_array($data['items'])) {
+            foreach ($data['items'] as $item) {
+                if (is_string($item) && trim($item) !== '') {
+                    $items[] = trim($item);
+                }
+            }
+        }
+
+        if ($items === []) {
+            return '';
+        }
+
+        $track = '';
+        foreach ([0, 1] as $_dup) {
+            foreach ($items as $item) {
+                $track .= '<span>' . $this->inlineMd($item) . '</span><span aria-hidden="true">·</span>';
+            }
+        }
+
+        return '<div class="mud-ticker-wrap" aria-hidden="true">'
+            . '<div class="mud-ticker" style="animation-duration:' . $speed . 's">'
+            . $track
+            . '</div></div>';
     }
 
 
