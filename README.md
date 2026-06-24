@@ -41,7 +41,7 @@ Listed via [getgrav/grav#4106](https://github.com/getgrav/grav/issues/4106) — 
 ### Manual
 
 ```bash
-bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.7.2/grav-plugin-grav-mud-alpha.zip
+bin/gpm direct-install https://github.com/GravMUD/grav-plugin-grav-mud-alpha/releases/download/0.7.3/grav-plugin-grav-mud-alpha.zip
 ```
 
 Or extract to `user/plugins/grav-mud-alpha`, then clear cache.
