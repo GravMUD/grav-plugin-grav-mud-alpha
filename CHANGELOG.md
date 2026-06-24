@@ -1,3 +1,10 @@
+# v0.7.2
+## 06/05/2026
+
+1. [](#bugfix)
+    * **Spec preview layout** — full-bleed heroes (`100vw`) no longer collapse the `.mud source` column in `::: example` pairs
+    * **CSS cleanup** — repaired corrupted `@media` blocks; removed theme shell rules from plugin fence CSS
+
 # v0.7.1
 ## 06/05/2026
 
