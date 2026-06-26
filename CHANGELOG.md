@@ -1,14 +1,3 @@
-# v0.7.3
-## 06/05/2026
-
-1. [](#new)
-    * **`::: ticker`** fence — scrolling marquee strip (Team DC docs pattern) with `speed:` and `prefers-reduced-motion` fallback
-
-1. [](#improved)
-    * **`compileSnippet`** passes `$grav` so `::: example` previews invoke `onMudFenceRender` (plugin fences render in spec panels)
-    * **`onMudFenceRender`** event includes `renderChildren` / `renderMarkdown` callbacks for nested addon fences
-    * **3D carousel CSS** — ring hub sizing and spec-preview containment in `grav-mud-fences.css`
-
 # v0.7.2
 ## 06/05/2026
 

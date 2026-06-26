@@ -674,8 +674,8 @@ class MudAlphaCompiler
             'video', 'spec-video',
 
             'theme', 'spec-theme',
-
             'gallery', 'spec-gallery', 'carousel', 'spec-carousel',
+            'tabs', 'spec-tabs', 'showcase-tabs', 'audio',
 
         ];
 

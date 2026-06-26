@@ -100,6 +100,12 @@ class MudDesignSpec
             case 'carousel':
             case 'spec-carousel':
                 return $this->renderCarousel($data, $attrs, $body);
+            case 'tabs':
+            case 'spec-tabs':
+            case 'showcase-tabs':
+                return $this->renderTabs($data, $attrs, $renderMarkdown);
+            case 'audio':
+                return $this->renderAudio($data, $attrs);
             default:
                 return '';
         }
@@ -684,20 +690,45 @@ class MudDesignSpec
     {
         $id = $this->attrId($attrs);
         $title = (string) ($data['title'] ?? '');
+        $layout = strtolower(trim((string) ($attrs['layout'] ?? $data['layout'] ?? $attrs['variant'] ?? $data['variant'] ?? '')));
+        
         $cards = '';
         if (!empty($data['cards']) && is_array($data['cards'])) {
-            foreach ($data['cards'] as $card) {
+            foreach ($data['cards'] as $index => $card) {
                 if (!is_array($card)) {
                     continue;
                 }
-                $cards .= '<article class="card"><h3>' . $this->inline((string) ($card['title'] ?? '')) . '</h3>'
-                    . '<p>' . $this->inline((string) ($card['body'] ?? '')) . '</p></article>';
+                
+                $isFlip = !empty($card['flip']) || $layout === 'bento' || $layout === 'flip' || isset($card['front']) || isset($card['back']);
+                
+                if ($isFlip) {
+                    $front = (string) ($card['front'] ?? $card['title'] ?? '');
+                    $back = (string) ($card['back'] ?? $card['body'] ?? '');
+                    $cardId = 'card-flip-' . uniqid() . '-' . $index;
+                    
+                    $cards .= '<article class="card card--flip">'
+                        . '<input type="checkbox" id="' . $this->esc($cardId) . '" class="card-flip-input" aria-hidden="true">'
+                        . '<label for="' . $this->esc($cardId) . '" class="card-inner">'
+                        . '<div class="card-front">'
+                        . '<h3>' . $this->inline($front) . '</h3>'
+                        . '<p class="flip-hint" style="font-size:0.75rem;opacity:0.6;margin-top:auto;text-align:right;">Click to flip ↻</p>'
+                        . '</div>'
+                        . '<div class="card-back">'
+                        . '<p>' . $this->inline($back) . '</p>'
+                        . '</div>'
+                        . '</label>'
+                        . '</article>';
+                } else {
+                    $cards .= '<article class="card"><h3>' . $this->inline((string) ($card['title'] ?? '')) . '</h3>'
+                        . '<p>' . $this->inline((string) ($card['body'] ?? '')) . '</p></article>';
+                }
             }
         }
 
         $motion = $this->motionFragment($attrs, $data, '');
+        $gridClass = ($layout === 'bento') ? ' cards--bento' : '';
 
-        return '<section class="grid-section' . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
+        return '<section class="grid-section' . $gridClass . $motion['extraClass'] . '"' . $id . $motion['dataAttr'] . '>'
             . ($title ? '<h2>' . $this->esc($title) . '</h2>' : '')
             . ($cards ? '<div class="cards">' . $cards . '</div>' : '')
             . '</section>';
@@ -1402,8 +1433,8 @@ class MudDesignSpec
                 return;
             }
             $parsed = $this->parseStructuredBody(trim(implode("\n", $blockBuf)));
-            if (in_array($blockKey, ['item', 'card', 'event', 'row', 'plan', 'post'], true)) {
-                $plural = $blockKey === 'item' ? 'items' : ($blockKey === 'card' ? 'cards' : ($blockKey === 'event' ? 'events' : ($blockKey === 'row' ? 'rows' : ($blockKey === 'post' ? 'posts' : 'plans'))));
+            if (in_array($blockKey, ['item', 'card', 'event', 'row', 'plan', 'post', 'panel', 'track'], true)) {
+                $plural = $blockKey === 'item' ? 'items' : ($blockKey === 'card' ? 'cards' : ($blockKey === 'event' ? 'events' : ($blockKey === 'row' ? 'rows' : ($blockKey === 'post' ? 'posts' : ($blockKey === 'panel' ? 'panels' : ($blockKey === 'track' ? 'tracks' : 'plans'))))));
                 if (!isset($data[$plural]) || !is_array($data[$plural])) {
                     $data[$plural] = [];
                 }
@@ -1421,7 +1452,7 @@ class MudDesignSpec
             $line = $lines[$i];
             $trim = trim($line);
 
-            if (preg_match('/^(feature|item|card|event|row|plan|post):\s*$/i', $trim, $bm)) {
+            if (preg_match('/^(feature|item|card|event|row|plan|post|panel|track):\s*$/i', $trim, $bm)) {
                 $flushBlock();
                 $blockKey = strtolower($bm[1]);
                 $blockBuf = [];
@@ -1574,6 +1605,73 @@ class MudDesignSpec
     private function attrId(array $attrs): string
     {
         return !empty($attrs['id']) ? ' id="' . $this->esc($attrs['id']) . '"' : '';
+    }
+
+    /** @param array<string, mixed> $data */
+    private function renderTabs(array $data, array $attrs, callable $renderMarkdown): string
+    {
+        $id = $this->attrId($attrs);
+        $title = (string) ($data['title'] ?? '');
+        $panels = $data['panels'] ?? [];
+        if (!$panels) {
+            return '';
+        }
+
+        $uniqueId = 'mud-tabs-' . uniqid();
+        $groupName = 'group-' . $uniqueId;
+
+        $inputs = '';
+        $labels = '';
+        $contents = '';
+        $styleRules = '';
+
+        foreach ($panels as $index => $panel) {
+            $panelTitle = (string) ($panel['title'] ?? 'Tab ' . ($index + 1));
+            $panelBody = (string) ($panel['body'] ?? $panel['content'] ?? '');
+            $checked = ($index === 0) ? ' checked' : '';
+            $tabId = $uniqueId . '-' . $index;
+
+            $inputs .= '<input type="radio" id="' . $this->esc($tabId) . '" name="' . $this->esc($groupName) . '" class="mud-tab-input"' . $checked . '>';
+            $labels .= '<label for="' . $this->esc($tabId) . '" class="mud-tab-label">' . $this->esc($panelTitle) . '</label>';
+            $contents .= '<div class="mud-tab-content mud-tab-content-' . $index . '">' . $renderMarkdown($panelBody) . '</div>';
+
+            $styleRules .= '#' . $uniqueId . ':has(#' . $tabId . ':checked) .mud-tab-content-' . $index . ' { display: block; }';
+            $styleRules .= '#' . $uniqueId . ':has(#' . $tabId . ':checked) label[for="' . $tabId . '"] { color: var(--cursy-accent, var(--accent, #e30613)); border-bottom-color: var(--cursy-accent, var(--accent, #e30613)); }';
+        }
+
+        return '<div class="mud-tabs-wrapper"' . $id . ' id="' . $uniqueId . '">'
+            . '<style>' . $styleRules . '</style>'
+            . $inputs
+            . '<div class="mud-tabs-labels">' . $labels . '</div>'
+            . $contents
+            . '</div>';
+    }
+
+    /** @param array<string, mixed> $data */
+    private function renderAudio(array $data, array $attrs): string
+    {
+        $id = $this->attrId($attrs);
+        $title = (string) ($data['title'] ?? 'Playlist');
+        $tracks = $data['tracks'] ?? [];
+        if (!$tracks) {
+            return '';
+        }
+
+        $playlistHtml = '';
+        foreach ($tracks as $index => $track) {
+            $trackTitle = (string) ($track['title'] ?? 'Track ' . ($index + 1));
+            $trackSrc = $this->mediaUrl((string) ($track['src'] ?? ''));
+            $playlistHtml .= '<li class="mud-audio-track">'
+                . '<span class="track-number">' . ($index + 1) . '</span>'
+                . '<span class="track-title">' . $this->esc($trackTitle) . '</span>'
+                . '<audio controls preload="none" src="' . $this->esc($trackSrc) . '"></audio>'
+                . '</li>';
+        }
+
+        return '<section class="mud-audio-deck"' . $id . '>'
+            . '<h2>' . $this->esc($title) . '</h2>'
+            . '<ul class="mud-audio-playlist">' . $playlistHtml . '</ul>'
+            . '</section>';
     }
 
     private function inline(string $text): string
